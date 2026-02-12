@@ -1,14 +1,17 @@
 import os
 import time
 import json
+import threading
 import requests
+from flask import Flask
 from playwright.sync_api import sync_playwright
+
+app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 VINE_URL = "https://www.amazon.it/vine/vine-items?queue=potluck"
-
 CHECK_INTERVAL = 300  # 5 minuti
 
 
@@ -16,8 +19,7 @@ def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHAT_ID,
-        "text": text,
-        "parse_mode": "HTML"
+        "text": text
     }
     requests.post(url, data=payload)
 
@@ -55,7 +57,7 @@ def scrape_vine_products():
     return products
 
 
-def main():
+def monitor_loop():
     send_telegram_message("🚀 Vine Monitor avviato!")
 
     while True:
@@ -74,4 +76,18 @@ def main():
 
             save_products(current_products)
 
-        except Exception as
+        except Exception as e:
+            send_telegram_message(f"⚠️ Errore: {str(e)}")
+
+        time.sleep(CHECK_INTERVAL)
+
+
+@app.route("/")
+def home():
+    return "Vine Monitor attivo"
+
+
+if __name__ == "__main__":
+    thread = threading.Thread(target=monitor_loop)
+    thread.start()
+    app.run(host="0.0.0.0", port=10000)
